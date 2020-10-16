@@ -36,7 +36,6 @@ import to.rtc.cli.migrate.Migrator;
 import to.rtc.cli.migrate.Tag;
 import to.rtc.cli.migrate.util.CommitCommentTranslator;
 import to.rtc.cli.migrate.util.Files;
-import to.rtc.cli.migrate.util.JazzignoreTranslator;
 
 /**
  * Git implementation of a {@link Migrator}.
@@ -46,7 +45,7 @@ import to.rtc.cli.migrate.util.JazzignoreTranslator;
  */
 public final class GitMigrator implements Migrator {
 	private static final String GIT_CONFIG_PREFIX = "git.config.";
-	static final List<String> ROOT_IGNORED_ENTRIES = Arrays.asList("/.jazz5", "/.jazzShed", "/.metadata");
+	static final List<String> ROOT_IGNORED_ENTRIES = Arrays.asList("/.jazz5", "/.jazzShed", "/.metadata", ".DS_Store");
 	static final Pattern GITIGNORE_PATTERN = Pattern.compile("(^.*(/|))\\.gitignore$");
 	static final Pattern JAZZIGNORE_PATTERN = Pattern.compile("(^.*(/|))\\.jazzignore$");
 	static final Pattern VALUE_PATTERN = Pattern.compile("^([0-9]+) *(m|mb|k|kb|)$", Pattern.CASE_INSENSITIVE);
@@ -113,8 +112,10 @@ public final class GitMigrator implements Migrator {
 	}
 
 	String getCommitMessage(String workItemNumbers, String comment, String workItemTexts) {
-		return String.format(properties.getProperty("commit.message.format", "%1s %2s"), workItemNumbers,
-				commentTranslator.translate(comment), workItemTexts).trim();
+		// return String.format(properties.getProperty("commit.message.format", "%1$s %2$s %3$s"), workItemNumbers,
+		// workItemTexts, commentTranslator.translate(comment)).trim();
+		return String.format(properties.getProperty("commit.message.format", "%1$s %2$s"), workItemTexts,
+				commentTranslator.translate(comment)).trim();
 	}
 
 	List<String> getGitattributeLines() {
@@ -138,7 +139,7 @@ public final class GitMigrator implements Migrator {
 				.valueOf(properties.getProperty("rtc.changeset.comment.substitute", Boolean.FALSE.toString()));
 		if (comment.isEmpty() && substituteWorkItemText)
 			return workItemText;
-		final String format = properties.getProperty("rtc.changeset.comment.format", "%1s");
+		final String format = properties.getProperty("rtc.changeset.comment.format", "%1$s");
 		return String.format(format, comment, workItemText);
 	}
 
@@ -146,7 +147,7 @@ public final class GitMigrator implements Migrator {
 		if (workItems.isEmpty()) {
 			return "";
 		}
-		final String format = properties.getProperty("rtc.workitem.number.format", "%1s");
+		final String format = properties.getProperty("rtc.workitem.number.format", "%1$s");
 		final String delimiter = properties.getProperty("rtc.workitem.number.delimiter", " ");
 		final StringBuilder sb = new StringBuilder();
 		boolean isFirst = true;
@@ -171,7 +172,7 @@ public final class GitMigrator implements Migrator {
 		if (workItems.isEmpty()) {
 			return "";
 		}
-		final String format = properties.getProperty("rtc.workitem.text.format", "%1s %2s");
+		final String format = properties.getProperty("rtc.workitem.text.format", "%1$s %2$s");
 		final String delimiter = properties.getProperty("rtc.workitem.text.delimiter",
 				System.getProperty("line.separator"));
 		final StringBuilder sb = new StringBuilder();
@@ -304,29 +305,29 @@ public final class GitMigrator implements Migrator {
 	}
 
 	private void handleJazzignores(Set<String> relativeFileNames) {
-		try {
-			Set<String> additionalNames = new HashSet<String>();
-			for (String relativeFileName : relativeFileNames) {
-				Matcher matcher = JAZZIGNORE_PATTERN.matcher(relativeFileName);
-				if (matcher.matches()) {
-					File jazzIgnore = new File(rootDir, relativeFileName);
-					String gitignoreFile = matcher.group(1).concat(".gitignore");
-					if (jazzIgnore.exists()) {
-						// change/add case
-						List<String> ignoreContent = JazzignoreTranslator.toGitignore(jazzIgnore);
-						Files.writeLines(new File(rootDir, gitignoreFile), ignoreContent, getCharset(), false);
-					} else {
-						// delete case
-						new File(rootDir, gitignoreFile).delete();
-					}
-					additionalNames.add(gitignoreFile);
-				}
-			}
-			// add additional modified name
-			relativeFileNames.addAll(additionalNames);
-		} catch (IOException e) {
-			throw new RuntimeException("Unable to handle .jazzignore", e);
-		}
+		// try {
+		// Set<String> additionalNames = new HashSet<String>();
+		// for (String relativeFileName : relativeFileNames) {
+		// Matcher matcher = JAZZIGNORE_PATTERN.matcher(relativeFileName);
+		// if (matcher.matches()) {
+		// File jazzIgnore = new File(rootDir, relativeFileName);
+		// String gitignoreFile = matcher.group(1).concat(".gitignore");
+		// if (jazzIgnore.exists()) {
+		// // change/add case
+		// List<String> ignoreContent = JazzignoreTranslator.toGitignore(jazzIgnore);
+		// Files.writeLines(new File(rootDir, gitignoreFile), ignoreContent, getCharset(), false);
+		// } else {
+		// // delete case
+		// new File(rootDir, gitignoreFile).delete();
+		// }
+		// additionalNames.add(gitignoreFile);
+		// }
+		// }
+		// // add additional modified name
+		// relativeFileNames.addAll(additionalNames);
+		// } catch (IOException e) {
+		// throw new RuntimeException("Unable to handle .jazzignore", e);
+		// }
 	}
 
 	private void handleGlobalFileExtensions(Set<String> addToGitIndex) {
@@ -469,8 +470,8 @@ public final class GitMigrator implements Migrator {
 		gitCommit(
 				new PersonIdent(changeset.getCreatorName(), changeset.getEmailAddress(), changeset.getCreationDate(),
 						0),
-				getCommitMessage(getWorkItemNumbers(changeset.getWorkItems()), getCommentText(changeset),
-						getWorkItemTexts(changeset.getWorkItems())));
+				// getCommitMessage(getWorkItemNumbers(changeset.getWorkItems()), getCommentText(changeset),
+				getCommitMessage("", getCommentText(changeset), getWorkItemTexts(changeset.getWorkItems())));
 	}
 
 	@Override
